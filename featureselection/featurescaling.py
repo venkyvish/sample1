@@ -1,0 +1,143 @@
+#!/usr/bin/python 
+
+""" 
+    Skeleton code for k-means clustering mini-project.
+"""
+
+
+
+
+import pickle
+import numpy as np
+import matplotlib.pyplot as plt
+import sys
+from math import isnan
+sys.path.append("../tools/")
+from feature_format import featureFormat, targetFeatureSplit
+
+# Get a given data from a dictionary with position provided as a list
+def getFromDict(dataDict, mapList):    
+    for k in mapList: dataDict = dataDict[k]
+    return dataDict
+
+
+
+def Draw(pred, features, poi, mark_poi=False, name="image.png", f1_name="feature 1", f2_name="feature 2"):
+    """ some plotting code designed to help you visualize your clusters """
+
+    ### plot each cluster with a different color--add more colors for
+    ### drawing more than five clusters
+    colors = ["b", "c", "r", "m", "g"]
+    for ii, pp in enumerate(pred):
+        plt.scatter(features[ii][0], features[ii][1], color = colors[pred[ii]])
+
+    ### if you like, place red stars over points that are POIs (just for funsies)
+    if mark_poi:
+        for ii, pp in enumerate(pred):
+            if poi[ii]:
+                plt.scatter(features[ii][0], features[ii][1], color="r", marker="*")
+    plt.xlabel(f1_name)
+    plt.ylabel(f2_name)
+    plt.savefig(name)
+    plt.show()
+
+
+print "debug1"
+### load in the dict of dicts containing all the data on each person in the dataset
+data_dict = pickle.load( open("../final_project/final_project_dataset.pkl", "r") )
+### there's an outlier--remove it! 
+data_dict.pop("TOTAL", 0)
+#print data_dict
+#import operator
+#maximum(data_dict.iteritems(), key=operator.itemgetter(1))[0]
+
+
+
+maxval=0
+k_max=0
+for key,value in data_dict.items():
+	#print data_dict[key]
+	if data_dict.has_key('exercised_stock_options'):
+		print "Exists"
+	
+	
+
+#print element
+
+### the input features we want to use 
+### can be any key in the person-level dictionary (salary, director_fees, etc.) 
+
+
+feature_1 = "salary"
+feature_2 = "exercised_stock_options"
+#feature_3 = "total_payments"
+poi  = "poi"
+features_list = [poi, feature_1, feature_2]
+data = featureFormat(data_dict, features_list )
+poi, finance_features = targetFeatureSplit( data )
+
+mylist  = []
+mylist1 = []
+for key, value in data_dict.iteritems():
+	val = getFromDict(data_dict, [key, "salary"])
+	val1 = getFromDict(data_dict, [key, "exercised_stock_options"])
+	mylist.append(float(val))
+	mylist1.append(float(val1))
+mat = np.array(mylist)	
+mat1 = np.array(mylist1)	
+
+maxval = np.nanmax(mat)
+print "Salary Max Value",maxval
+minval = np.nanmin(mat)
+print "Salary Min Value",minval
+
+maxval1 = np.nanmax(mat1)
+print "Stock Options Max Value",maxval1
+minval1 = np.nanmin(mat1)
+print "Stock Options Min Value",minval1
+
+
+from sklearn.preprocessing import MinMaxScaler
+import numpy
+
+weights = numpy.array([[minval],[200000.],[maxval]])
+scaler = MinMaxScaler()
+rescaled_weight = scaler.fit_transform(weights)
+print "Re Scaled Salary Weight",rescaled_weight
+
+weights = numpy.array([[minval1],[1000000.],[maxval1]])
+scaler = MinMaxScaler()
+rescaled_weight = scaler.fit_transform(weights)
+print "Re Scaled Stock Option Weight",rescaled_weight
+
+
+
+### in the "clustering with 3 features" part of the mini-project,
+### you'll want to change this line to 
+### for f1, f2, _ in finance_features:
+### (as it's currently written, the line below assumes 2 features)
+for f1, f2 in finance_features:
+    plt.scatter( f1, f2 )
+plt.show()
+
+### cluster here; create predictions of the cluster labels
+### for the data and store them to a list called pred
+print "Entering Clustering"
+from sklearn.cluster import KMeans
+
+km = KMeans(n_clusters=2, init='k-means++', n_init=10, max_iter=300, tol=0.0001, precompute_distances='auto', 
+verbose=0, random_state=None, copy_x=True, n_jobs=1)
+#km = KMeans(n_clusters=3, init='k-means++', n_init=10, max_iter=300, tol=0.0001, precompute_distances='auto', 
+#verbose=0, random_state=None, copy_x=True, n_jobs=1)
+
+
+print "Performing fit"                
+km.fit(finance_features)
+pred = km.predict(finance_features)
+### rename the "name" parameter when you change the number of features
+### so that the figure gets saved to a different file
+try:
+    print "hello"
+    Draw(pred, finance_features, poi, mark_poi=False, name="clusters.pdf", f1_name=feature_1, f2_name=feature_2)
+except NameError:
+    print "no predictions object named pred found, no clusters to plot"
